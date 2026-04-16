@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.0](https://github.com/Borrelworst/pipelinectl/compare/v0.1.1...v0.2.0) (2026-04-16)
+
+
+### Features
+
+* add tests ([019a82c](https://github.com/Borrelworst/pipelinectl/commit/019a82c72e1b78d0ce9378e347209d61124def32))
+* Added tests ([27537ac](https://github.com/Borrelworst/pipelinectl/commit/27537ac3090b50b2928fcd30081f9882c45dba68))
+* updated readme ([5aca9ee](https://github.com/Borrelworst/pipelinectl/commit/5aca9ee4b6a6b746fd0ea3785c35f383b21b4c6b))
+
 ## [0.1.1](https://github.com/Borrelworst/pipelinectl/compare/v0.1.0...v0.1.1) (2026-04-16)
 
 
