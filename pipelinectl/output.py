@@ -1,8 +1,8 @@
 """Log streaming and terminal output helpers."""
 
+import re
 import sys
 import time
-from typing import Optional
 
 # ANSI colours — fall back to empty strings if not a TTY
 def _c(code: str) -> str:
@@ -48,8 +48,6 @@ def print_section(title: str):
     print(f"{BOLD}{BLUE}{title}{RESET}")
     print(f"{DIM}{bar}{RESET}")
 
-
-import re
 
 _TIMESTAMP_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z\s?")
 
