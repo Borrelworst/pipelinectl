@@ -1,0 +1,88 @@
+name: Build Binaries
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest   # arm64
+            arch: arm64
+          - os: macos-13       # x86_64
+            arch: x86_64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyinstaller -e .
+      - run: pyinstaller --onefile --name pipelinectl pipelinectl/cli.py
+      - name: Package binary
+        run: |
+          VERSION=${GITHUB_REF_NAME}
+          tar -czf pipelinectl-${VERSION}-macos-${{ matrix.arch }}.tar.gz -C dist pipelinectl
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: "pipelinectl-*.tar.gz"
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+
+  update-formula:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get release assets
+        id: assets
+        run: |
+          VERSION=${GITHUB_REF_NAME}
+          ARM64_URL="https://github.com/Borrelworst/pipelinectl/releases/download/${VERSION}/pipelinectl-${VERSION}-macos-arm64.tar.gz"
+          X86_URL="https://github.com/Borrelworst/pipelinectl/releases/download/${VERSION}/pipelinectl-${VERSION}-macos-x86_64.tar.gz"
+          ARM64_SHA=$(curl -sL "$ARM64_URL" | sha256sum | awk '{print $1}')
+          X86_SHA=$(curl -sL "$X86_URL" | sha256sum | awk '{print $1}')
+          echo "arm64_url=$ARM64_URL" >> $GITHUB_OUTPUT
+          echo "x86_url=$X86_URL" >> $GITHUB_OUTPUT
+          echo "arm64_sha=$ARM64_SHA" >> $GITHUB_OUTPUT
+          echo "x86_sha=$X86_SHA" >> $GITHUB_OUTPUT
+      - name: Update Homebrew formula
+        run: |
+          git clone https://x-access-token:${{ secrets.RELEASE_PLEASE_TOKEN }}@github.com/Borrelworst/homebrew-pipelinectl.git
+          cd homebrew-pipelinectl
+          VERSION=${GITHUB_REF_NAME#v}
+          cat > Formula/pipelinectl.rb << EOF
+          class Pipelinectl < Formula
+            desc "CLI wrapper to trigger and tail Azure DevOps pipelines"
+            homepage "https://github.com/Borrelworst/pipelinectl"
+            license "MIT"
+            version "${VERSION}"
+
+            on_macos do
+              on_arm do
+                url "${{ steps.assets.outputs.arm64_url }}"
+                sha256 "${{ steps.assets.outputs.arm64_sha }}"
+              end
+              on_intel do
+                url "${{ steps.assets.outputs.x86_url }}"
+                sha256 "${{ steps.assets.outputs.x86_sha }}"
+              end
+            end
+
+            def install
+              bin.install "pipelinectl"
+            end
+
+            test do
+              assert_match "pipelinectl", shell_output("#{bin}/pipelinectl --help")
+            end
+          end
+          EOF
+          git config user.email "github-actions@github.com"
+          git config user.name "github-actions"
+          git add Formula/pipelinectl.rb
+          git commit -m "chore: update pipelinectl to ${VERSION}"
+          git push

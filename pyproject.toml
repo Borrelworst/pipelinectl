@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "ruff"]
+dev = ["pytest", "ruff", "pyinstaller"]
 
 [project.scripts]
 pipelinectl = "pipelinectl.cli:cli"
