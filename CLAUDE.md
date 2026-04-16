@@ -5,10 +5,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Development setup
 
 ```bash
-pip install --editable .   # installs the pipelinectl command in the active venv
+pip install --editable ".[dev]"   # installs pipelinectl + dev deps (pytest, ruff, pyinstaller)
 ```
 
 No build step. Editable install means code changes are reflected immediately without reinstalling.
+
+## Running tests and linting
+
+```bash
+pytest          # run all tests
+ruff check .    # lint
+```
 
 ## Architecture
 
@@ -29,3 +36,14 @@ Four modules, each with a single responsibility:
 - Approval resolution requires the batch endpoint with array body, not the per-approval PATCH
 - Log content supports `startLine` for incremental streaming
 - `pipeline.owner.id` in the approval object equals the build ID of the run that needs approval
+
+## CI / release pipeline
+
+- **CI** (`.github/workflows/ci.yml`) — runs on PRs to `main`: ruff lint, pytest, conventional commit check on PR title. Skipped automatically for Release Please PRs (label `autorelease: pending`).
+- **Release** (`.github/workflows/release.yaml`) — Release Please watches `main` and opens a release PR when conventional commits accumulate. Uses `RELEASE_PLEASE_TOKEN` (PAT with `repo` scope) so the resulting GitHub release triggers downstream workflows.
+- **Publish** (`.github/workflows/publish.yaml`) — triggers on `release: published`, pushes to PyPI via trusted publishing (no token needed, configured on pypi.org).
+- **Build** (`.github/workflows/build.yml`) — triggers on `release: published`, builds a macOS arm64 binary with PyInstaller, attaches it to the GitHub release, then auto-updates the Homebrew formula in `Borrelworst/homebrew-pipelinectl`.
+
+## Commit conventions
+
+Uses Conventional Commits. `feat:` → minor bump, `fix:` → patch bump, `feat!:` → major bump. All other prefixes (`chore:`, `docs:`, `refactor:`, `test:`, `ci:`, etc.) produce no release.

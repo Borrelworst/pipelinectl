@@ -1,4 +1,11 @@
-# pipelinectl
+```
+ ____  _            _ _              _   _
+|  _ \(_)_ __   ___| (_)_ __   ___ | |_| |
+| |_) | | '_ \ / _ \ | | '_ \ / _ \| __| |
+|  __/| | |_) |  __/ | | | | |  __/| |_| |
+|_|   |_| .__/ \___|_|_|_| |_|\___| \__|_|
+         |_|          trigger · tail · ship
+```
 
 A minimal CLI to trigger and tail Azure DevOps pipelines directly from your terminal — no browser, no copy-paste.
 
@@ -24,12 +31,17 @@ Claude Code sees the error output directly if the pipeline fails.
 ## Installation
 
 ```bash
+# Homebrew (macOS, recommended)
+brew tap Borrelworst/pipelinectl
+brew install Borrelworst/pipelinectl/pipelinectl
+
+# PyPI
 pip install pipelinectl
 ```
 
 For local development:
 ```bash
-pip install --editable .
+pip install --editable ".[dev]"
 ```
 
 ---
