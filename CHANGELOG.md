@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.0](https://github.com/Borrelworst/pipelinectl/compare/v0.3.3...v0.4.0) (2026-04-16)
+
+
+### Features
+
+* updated entry point for homebrew to work properly ([2f0edd0](https://github.com/Borrelworst/pipelinectl/commit/2f0edd04b7f48f319c74acf754e6b02cad474fe0))
+* updated entry point for homebrew to work properly ([7331f97](https://github.com/Borrelworst/pipelinectl/commit/7331f975903eeff7370b50637330fffebf79cdad))
+
 ## [0.3.3](https://github.com/Borrelworst/pipelinectl/compare/v0.3.2...v0.3.3) (2026-04-16)
 
 
