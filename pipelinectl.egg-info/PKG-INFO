@@ -1,3 +1,15 @@
+Metadata-Version: 2.4
+Name: pipelinectl
+Version: 0.1.0
+Summary: CLI wrapper to trigger and tail Azure DevOps pipelines
+License: MIT
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: click>=8.1
+Requires-Dist: requests>=2.31
+Requires-Dist: tomli>=2.0; python_version < "3.11"
+Requires-Dist: tomli-w>=1.0
+
 # pipelinectl
 
 A minimal CLI to trigger and tail Azure DevOps pipelines directly from your terminal — no browser, no copy-paste.
@@ -47,10 +59,6 @@ This walks you through:
 Config is saved to `~/.pipelinectl/config.toml` with `chmod 600`.
 
 **Alternatively**, set `ADO_PAT` as an environment variable — it takes precedence over the config file.
-
-> For permissions, currently set:
-- Build: Read & execute
-- Pipeline Resources: Use
 
 ---
 

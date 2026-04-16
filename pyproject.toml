@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pipelinectl"
+version = "0.1.0"
+description = "CLI wrapper to trigger and tail Azure DevOps pipelines"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "click>=8.1",
+    "requests>=2.31",
+    "tomli>=2.0; python_version < '3.11'",
+    "tomli-w>=1.0",
+]
+
+[project.scripts]
+pipelinectl = "pipelinectl.cli:cli"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pipelinectl*"]

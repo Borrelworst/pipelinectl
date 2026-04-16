@@ -1,0 +1,2 @@
+[console_scripts]
+pipelinectl = pipelinectl.cli:cli
