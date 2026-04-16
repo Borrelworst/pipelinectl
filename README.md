@@ -24,6 +24,11 @@ Claude Code sees the error output directly if the pipeline fails.
 ## Installation
 
 ```bash
+pip install pipelinectl
+```
+
+For local development:
+```bash
 pip install --editable .
 ```
 

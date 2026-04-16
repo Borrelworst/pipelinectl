@@ -16,6 +16,9 @@ dependencies = [
     "tomli-w>=1.0",
 ]
 
+[project.optional-dependencies]
+dev = ["pytest", "ruff"]
+
 [project.scripts]
 pipelinectl = "pipelinectl.cli:cli"
 

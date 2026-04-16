@@ -11,6 +11,7 @@ from .ado_client import ADOClient
 from .output import (
     print_run_header,
     print_final_result,
+    print_section,
     wait_for_completion,
     BOLD, CYAN, RESET, DIM, RED, GREEN, YELLOW,
 )
@@ -186,7 +187,6 @@ def run(pipeline: str, branch: Optional[str], variables: tuple, parameters: tupl
             if outcome[0] == "approval_pending":
                 approvals = outcome[1]
                 for approval in approvals:
-                    stage = approval.get("instructions") or approval.get("id", "unknown")
                     click.echo(f"\n{YELLOW}{BOLD}⏸  Approval required{RESET}  {DIM}(id: {approval['id']}){RESET}")
                     if approval.get("instructions"):
                         click.echo(f"   {approval['instructions']}")
