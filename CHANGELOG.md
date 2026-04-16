@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.1](https://github.com/Borrelworst/pipelinectl/compare/v0.3.0...v0.3.1) (2026-04-16)
+
+
+### Bug Fixes
+
+* binary creation ([d15c979](https://github.com/Borrelworst/pipelinectl/commit/d15c979b301754e97a36612e9907ada94415aabb))
+* binary creation ([59fdc07](https://github.com/Borrelworst/pipelinectl/commit/59fdc071d6311b6153b3bdb54fe63796b6018bd2))
+
 ## [0.3.0](https://github.com/Borrelworst/pipelinectl/compare/v0.2.0...v0.3.0) (2026-04-16)
 
 
