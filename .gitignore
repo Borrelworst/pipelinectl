@@ -365,3 +365,4 @@ terraform.plan.out
 
 # Development
 .venv/
+pipelinectl.egg-info/

@@ -1,6 +1,0 @@
-click>=8.1
-requests>=2.31
-tomli-w>=1.0
-
-[:python_version < "3.11"]
-tomli>=2.0

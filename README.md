@@ -10,25 +10,21 @@ The typical workflow:
 3. Wait for logs to appear
 4. Copy error → paste into Claude Code
 5. Fix → repeat
+
 With `pipelinectl`:
 ```bash
 pipelinectl push-run build-and-test
-# ^ pushes, triggers, and streams logs inline — exit code reflects success/failure
+# ^ pushes, triggers, tails logs, exits non-zero on failure
 ```
 
 Claude Code sees the error output directly if the pipeline fails.
+
 ---
 
 ## Installation
 
 ```bash
 pip install --editable .
-```
-
-Or once published to PyPI:
-
-```bash
-pip install pipelinectl
 ```
 
 ---
@@ -39,60 +35,84 @@ pip install pipelinectl
 pipelinectl init
 ```
 
-This walks you through:
+Prompts for:
 - Azure DevOps **organization** (e.g. `mycompany`)
 - Azure DevOps **project** (e.g. `MyProject`)
-- **Personal Access Token** (PAT) — needs *Build: Read & execute* and *Pipeline: Read* permissions
-- **Default branch** (e.g. `main`)
+- **Personal Access Token** (PAT) — needs *Build: Read & execute* and *Pipeline Resources: Use*
+- **Default branch** (fallback when not inside a git repo)
+
 Config is saved to `~/.pipelinectl/config.toml` with `chmod 600`.
 
-**Alternatively**, set `ADO_PAT` as an environment variable — it takes precedence over the config file.
-
-> For permissions, currently set:
-- Build: Read & execute
-- Pipeline Resources: Use
+Set `ADO_PAT` as an environment variable to override the PAT from config.
 
 ---
 
 ## Commands
 
-### `pipelinectl list`
-List all pipelines in your project.
-
-```bash
-pipelinectl list
-pipelinectl list --filter deploy   # filter by name substring
-```
-
----
-
 ### `pipelinectl run PIPELINE`
-Trigger a pipeline and stream its logs.
+
+Trigger a pipeline and wait for it to finish.
 
 ```bash
-pipelinectl run build-and-test
-pipelinectl run build-and-test --branch feature/my-fix
-pipelinectl run 42                              # by numeric ID
-pipelinectl run deploy -v ENV=staging -v REGION=westeurope
-pipelinectl run build-and-test --no-follow     # trigger only, don't stream
-pipelinectl run build-and-test --push          # git push first, then trigger
+pipelinectl run build-and-test                        # uses current git branch
+pipelinectl run build-and-test --branch main          # explicit branch
+pipelinectl run 42                                    # by numeric pipeline ID
+pipelinectl run deploy -v ENV=staging -v REGION=westeurope  # queue-time variables
+pipelinectl run install -P dev=true -P version=1.2   # YAML template parameters
+pipelinectl run build-and-test --logs                 # stream live log output
+pipelinectl run build-and-test --no-follow            # trigger only, don't wait
+pipelinectl run build-and-test --push                 # git push first, then trigger
 ```
 
-Exit code is `0` on success, `1` on failure — so Claude Code (or any CI wrapper) can act on it automatically.
+Branch resolution order: `--branch` flag → current git branch → config `default_branch`.
+
+PIPELINE is matched by case-insensitive substring against pipeline names, or exact numeric ID. If multiple pipelines match, the command errors and lists them.
+
+Exit code is `0` on success, `1` on failure.
+
+**Approval gates** — when the pipeline reaches an approval gate, pipelinectl pauses and prompts you to approve or reject inline:
+```
+⏸  Approval required
+   Approve? [y/N]:
+```
 
 ---
 
 ### `pipelinectl push-run PIPELINE`
-Shortcut for `run --push`. Pushes the current branch and triggers the pipeline.
+
+Shortcut for `run --push`. Pushes the current branch then triggers the pipeline.
 
 ```bash
 pipelinectl push-run build-and-test
-pipelinectl push-run build-and-test --branch feature/my-fix
+pipelinectl push-run build-and-test --logs
+```
+
+---
+
+### `pipelinectl list`
+
+List all pipelines in your project.
+
+```bash
+pipelinectl list
+pipelinectl list --filter deploy
+```
+
+---
+
+### `pipelinectl params PIPELINE`
+
+Show queue-time variables and template parameters for a pipeline.
+
+```bash
+pipelinectl params build-and-test
+pipelinectl params 42
 ```
 
 ---
 
 ### `pipelinectl status PIPELINE`
+
 Show recent run history.
 
 ```bash
@@ -103,52 +123,24 @@ pipelinectl status deploy --top 10
 ---
 
 ### `pipelinectl logs PIPELINE [RUN_ID]`
-Fetch and print logs from a previous run (no re-trigger).
+
+Fetch logs from a previous run without re-triggering.
 
 ```bash
-pipelinectl logs build-and-test            # most recent run
-pipelinectl logs build-and-test 98765      # specific run by ID
-pipelinectl logs build-and-test --last 2   # 2nd most recent run
+pipelinectl logs build-and-test           # most recent run
+pipelinectl logs build-and-test 98765     # specific run ID
+pipelinectl logs build-and-test --last 2  # 2nd most recent
 ```
 
 ---
 
-## Claude Code integration
-
-Because `pipelinectl run` exits with a non-zero code on failure and prints all logs to stdout/stderr, Claude Code can call it directly and read the error:
-
-```bash
-# In your Claude Code session:
-pipelinectl run build-and-test --branch $(git branch --show-current)
-```
-
-Or add a `CLAUDE.md` note like:
-```
-To run the CI pipeline: `pipelinectl run build-and-test`
-```
-
----
-
-## PAT permissions required
-
-In Azure DevOps → User Settings → Personal Access Tokens:
-- **Build**: Read & execute
-- **Release**: Read, write & execute (optional, for release pipelines)
----
-
-## Config file reference
+## Config file
 
 `~/.pipelinectl/config.toml`:
 ```toml
 [azure_devops]
-organization    = "mycompany"
-project         = "MyProject"
-pat             = "xxxxxxxxxxxxxxxxxxxx"   # or use ADO_PAT env var
-default_branch  = "main"
+organization   = "mycompany"
+project        = "MyProject"
+pat            = "xxxx"     # or use ADO_PAT env var
+default_branch = "main"     # fallback when not in a git repo
 ```
-
----
-
-## Extending to GitHub Actions
-
-GitHub Actions support is planned. The same CLI shape will work with a `--platform github` flag or a `[github]` config section.
