@@ -16,7 +16,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install pyinstaller -e .
-      - run: pyinstaller --onefile --name pipelinectl pipelinectl/cli.py
+      - run: pyinstaller --onefile --name pipelinectl entry_point.py
       - name: Package binary
         run: tar -czf pipelinectl-${GITHUB_REF_NAME}-macos-arm64.tar.gz -C dist pipelinectl
       - name: Upload to release
