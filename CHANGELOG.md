@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.3](https://github.com/Borrelworst/pipelinectl/compare/v0.3.2...v0.3.3) (2026-04-16)
+
+
+### Documentation
+
+* updated logo ([f1a4f4a](https://github.com/Borrelworst/pipelinectl/commit/f1a4f4a19e72cb38c0de782115e144ca244c35fa))
+* updated logo ([75dfdc0](https://github.com/Borrelworst/pipelinectl/commit/75dfdc0a0d967ac71d6c946053a339292b0ef6d5))
+
 ## [0.3.2](https://github.com/Borrelworst/pipelinectl/compare/v0.3.1...v0.3.2) (2026-04-16)
 
 
