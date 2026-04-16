@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.2](https://github.com/Borrelworst/pipelinectl/compare/v0.3.1...v0.3.2) (2026-04-16)
+
+
+### Bug Fixes
+
+* build for arm64 only ([bcfd640](https://github.com/Borrelworst/pipelinectl/commit/bcfd64020524a9751a551dcf791ec2d775d7e573))
+* only build for arm64 ([c047dcd](https://github.com/Borrelworst/pipelinectl/commit/c047dcd56dbb4b2779ce9555a8868782d2a5fa85))
+* skip ci on release-please branches ([3f8ee56](https://github.com/Borrelworst/pipelinectl/commit/3f8ee565d41337a9964b1cd377032409378deb20))
+
 ## [0.3.1](https://github.com/Borrelworst/pipelinectl/compare/v0.3.0...v0.3.1) (2026-04-16)
 
 
