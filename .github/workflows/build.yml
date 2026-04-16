@@ -9,14 +9,7 @@ permissions:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        include:
-          - os: macos-latest   # arm64
-            arch: arm64
-          - os: macos-13       # x86_64
-            arch: x86_64
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -25,9 +18,7 @@ jobs:
       - run: pip install pyinstaller -e .
       - run: pyinstaller --onefile --name pipelinectl pipelinectl/cli.py
       - name: Package binary
-        run: |
-          VERSION=${GITHUB_REF_NAME}
-          tar -czf pipelinectl-${VERSION}-macos-${{ matrix.arch }}.tar.gz -C dist pipelinectl
+        run: tar -czf pipelinectl-${GITHUB_REF_NAME}-macos-arm64.tar.gz -C dist pipelinectl
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
@@ -39,19 +30,14 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Get release assets
+      - name: Get release asset SHA256
         id: assets
         run: |
           VERSION=${GITHUB_REF_NAME}
-          ARM64_URL="https://github.com/Borrelworst/pipelinectl/releases/download/${VERSION}/pipelinectl-${VERSION}-macos-arm64.tar.gz"
-          X86_URL="https://github.com/Borrelworst/pipelinectl/releases/download/${VERSION}/pipelinectl-${VERSION}-macos-x86_64.tar.gz"
-          ARM64_SHA=$(curl -sL "$ARM64_URL" | sha256sum | awk '{print $1}')
-          X86_SHA=$(curl -sL "$X86_URL" | sha256sum | awk '{print $1}')
-          echo "arm64_url=$ARM64_URL" >> $GITHUB_OUTPUT
-          echo "x86_url=$X86_URL" >> $GITHUB_OUTPUT
-          echo "arm64_sha=$ARM64_SHA" >> $GITHUB_OUTPUT
-          echo "x86_sha=$X86_SHA" >> $GITHUB_OUTPUT
+          URL="https://github.com/Borrelworst/pipelinectl/releases/download/${VERSION}/pipelinectl-${VERSION}-macos-arm64.tar.gz"
+          SHA=$(curl -sL "$URL" | sha256sum | awk '{print $1}')
+          echo "url=$URL" >> $GITHUB_OUTPUT
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
       - name: Update Homebrew formula
         run: |
           git clone https://x-access-token:${{ secrets.RELEASE_PLEASE_TOKEN }}@github.com/Borrelworst/homebrew-pipelinectl.git
@@ -64,16 +50,8 @@ jobs:
             license "MIT"
             version "${VERSION}"
 
-            on_macos do
-              on_arm do
-                url "${{ steps.assets.outputs.arm64_url }}"
-                sha256 "${{ steps.assets.outputs.arm64_sha }}"
-              end
-              on_intel do
-                url "${{ steps.assets.outputs.x86_url }}"
-                sha256 "${{ steps.assets.outputs.x86_sha }}"
-              end
-            end
+            url "${{ steps.assets.outputs.url }}"
+            sha256 "${{ steps.assets.outputs.sha }}"
 
             def install
               bin.install "pipelinectl"
