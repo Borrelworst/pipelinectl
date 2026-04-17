@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+# Mock pipelinectl — used by demo/demo.tape to produce a realistic terminal animation
+# without needing a live Azure DevOps connection.
+
+BOLD=$'\033[1m'
+DIM=$'\033[2m'
+RESET=$'\033[0m'
+CYAN=$'\033[36m'
+GREEN=$'\033[32m'
+BLUE=$'\033[34m'
+
+BAR="────────────────────────────────────────────────────────────"
+
+case "$1" in
+  list)
+    echo ""
+    printf "  %6s  %s\n" "ID" "Name"
+    printf "  %6s  %s\n" "──────" "──────────────────────────────────────────────────"
+    sleep 0.05
+    printf "  %6s  %s\n" "12" "api-integration-tests"
+    sleep 0.05
+    printf "  %6s  %s\n" "7" "build-and-test"
+    sleep 0.05
+    printf "  %6s  %s\n" "23" "deploy-production"
+    sleep 0.05
+    printf "  %6s  %s\n" "18" "deploy-staging"
+    sleep 0.05
+    printf "  %6s  %s\n" "31" "nightly-regression"
+    echo ""
+    ;;
+
+  push-run|run)
+    # git push
+    printf "${DIM}\$ git push${RESET}\n"
+    sleep 0.3
+    echo "Enumerating objects: 5, done."
+    sleep 0.1
+    echo "Counting objects: 100% (5/5), done."
+    sleep 0.1
+    echo "Writing objects: 100% (3/3), 1.02 KiB | 1.02 MiB/s, done."
+    sleep 0.1
+    echo "To github.com:mycompany/myproject.git"
+    echo "   a1b2c3d..e4f5g6h  feat/faster-search -> feat/faster-search"
+    echo ""
+    sleep 0.3
+
+    printf "Triggering ${BOLD}build-and-test${RESET} on branch ${CYAN}feat/faster-search${RESET} ...\n"
+    sleep 0.6
+    echo ""
+    printf "${BOLD}Pipeline : ${CYAN}build-and-test${RESET}\n"
+    printf "${BOLD}Branch   : ${CYAN}feat/faster-search${RESET}\n"
+    printf "${BOLD}Run ID   : ${CYAN}1042${RESET}\n"
+    printf "${BOLD}URL      : ${DIM}https://dev.azure.com/mycompany/MyProject/_build/results?buildId=1042${RESET}\n"
+    echo ""
+    sleep 0.9
+
+    echo "Initialize job"
+    sleep 0.2
+    echo "Checkout feat/faster-search to /agent/_work/1/s"
+    sleep 0.5
+
+    echo ""
+    printf "${DIM}${BAR}${RESET}\n"
+    printf "${BOLD}${BLUE}Build${RESET}\n"
+    printf "${DIM}${BAR}${RESET}\n"
+    sleep 0.2
+    echo "pip install -e ."
+    sleep 0.7
+    echo "Successfully installed pipelinectl-0.4.0"
+    sleep 0.3
+
+    echo ""
+    printf "${DIM}${BAR}${RESET}\n"
+    printf "${BOLD}${BLUE}Test${RESET}\n"
+    printf "${DIM}${BAR}${RESET}\n"
+    sleep 0.2
+    echo "pytest -q"
+    sleep 0.4
+    printf ".....................                                      [100%%]\n"
+    sleep 0.6
+    echo "21 passed in 3.41s"
+    sleep 0.3
+
+    echo ""
+    printf "${DIM}${BAR}${RESET}\n"
+    printf "${BOLD}${BLUE}Lint${RESET}\n"
+    printf "${DIM}${BAR}${RESET}\n"
+    sleep 0.2
+    echo "ruff check ."
+    sleep 0.6
+    echo "All checks passed."
+    sleep 0.4
+
+    echo ""
+    printf "\n${GREEN}${BOLD}✓ Pipeline succeeded${RESET}\n"
+    printf "  ${DIM}https://dev.azure.com/mycompany/MyProject/_build/results?buildId=1042${RESET}\n"
+    echo ""
+    ;;
+
+  *)
+    echo "pipelinectl — trigger and tail Azure DevOps pipelines from the terminal."
+    echo ""
+    echo "Commands: init  list  run  push-run  status  logs  params"
+    ;;
+esac

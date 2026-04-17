@@ -7,6 +7,8 @@
 |_|     |_|              trigger · tail · ship
 ```
 
+![demo](demo/demo.gif)
+
 A minimal CLI to trigger and tail Azure DevOps pipelines directly from your terminal — no browser, no copy-paste.
 
 ## Why?
@@ -161,3 +163,4 @@ project        = "MyProject"
 pat            = "xxxx"     # or use ADO_PAT env var
 default_branch = "main"     # fallback when not in a git repo
 ```
+
