@@ -164,15 +164,3 @@ pat            = "xxxx"     # or use ADO_PAT env var
 default_branch = "main"     # fallback when not in a git repo
 ```
 
----
-
-## Regenerating the demo
-
-The demo GIF at the top is produced by [vhs](https://github.com/charmbracelet/vhs). Run from the repo root:
-
-```bash
-brew install vhs
-vhs demo/demo.tape
-```
-
-This renders `demo/demo.gif` using `demo/mock/pipelinectl` — a shell script that simulates real output without needing a live Azure DevOps connection.

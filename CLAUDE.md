@@ -47,3 +47,14 @@ Four modules, each with a single responsibility:
 ## Commit conventions
 
 Uses Conventional Commits. `feat:` → minor bump, `fix:` → patch bump, `feat!:` → major bump. All other prefixes (`chore:`, `docs:`, `refactor:`, `test:`, `ci:`, etc.) produce no release.
+
+## Regenerating the demo
+
+The demo GIF (`demo/demo.gif`) is produced by [vhs](https://github.com/charmbracelet/vhs). Run from the repo root:
+
+```bash
+brew install vhs
+vhs demo/demo.tape
+```
+
+`demo/mock/pipelinectl` is a shell script that simulates real output without needing a live Azure DevOps connection.
