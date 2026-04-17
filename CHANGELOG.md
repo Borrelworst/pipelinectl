@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.1](https://github.com/Borrelworst/pipelinectl/compare/v0.4.0...v0.4.1) (2026-04-17)
+
+
+### Documentation
+
+* Add visual demo ([8b70f67](https://github.com/Borrelworst/pipelinectl/commit/8b70f670e362cacbdc0272783724e277366ff7ae))
+* Add visual preview ([98096b8](https://github.com/Borrelworst/pipelinectl/commit/98096b88ebc18eb5cceb60a977c2b4f5ca812574))
+
 ## [0.4.0](https://github.com/Borrelworst/pipelinectl/compare/v0.3.3...v0.4.0) (2026-04-16)
 
 
