@@ -56,18 +56,24 @@ def _strip_timestamp(line: str) -> str:
     return _TIMESTAMP_RE.sub("", line)
 
 
-def wait_for_completion(client, build_id: int, poll_interval: float = 2.0, stream_logs: bool = False):
+def wait_for_completion(client, build_id: int, poll_interval: float = 2.0, stream_logs: bool = False,
+                        log_offsets: dict = None, log_in_yaml: dict = None):
     """
     Poll until the build completes or an approval is needed.
 
     Returns:
       ("completed", result_str, build)  — pipeline finished
       ("approval_pending", approvals)   — one or more approvals are waiting
+
+    Pass log_offsets and log_in_yaml from a previous call to avoid re-streaming
+    already-seen lines (needed when re-entering after an approval gate).
     """
     tick = 0
     spinner = ["|", "/", "-", "\\"]
-    log_offsets: dict[int, int] = {}   # log_id -> next line index (1-based)
-    log_in_yaml: dict[int, bool] = {}  # log_id -> currently inside YAML group
+    if log_offsets is None:
+        log_offsets = {}
+    if log_in_yaml is None:
+        log_in_yaml = {}
 
     while True:
         try:
@@ -112,11 +118,17 @@ def wait_for_completion(client, build_id: int, poll_interval: float = 2.0, strea
                 print("\r" + " " * 20 + "\r", end="")
             return "completed", build_result, build
 
-        # Check for pending approvals every few ticks.
-        # get_pending_approvals already filters to approvals for the current run
-        # with initiatedOn set, so these are genuinely blocking.
+        # Check for pending authorizations and approvals every few ticks.
+        # Authorization (resource permission) is checked first — it blocks before
+        # approvals become active (Checkpoint.Approval steps won't have initiatedOn
+        # until Checkpoint.Authorization completes).
         if tick % 4 == 0:
             try:
+                auth_stages = client.get_pending_authorizations(build_id)
+                if auth_stages:
+                    if sys.stdout.isatty():
+                        print("\r" + " " * 20 + "\r", end="")
+                    return "authorization_pending", auth_stages
                 approvals = client.get_pending_approvals(build_id)
                 if approvals:
                     if sys.stdout.isatty():
