@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/Borrelworst/pipelinectl/compare/v0.4.1...v0.5.0) (2026-04-22)
+
+
+### Features
+
+* improvements by [@cveld](https://github.com/cveld) ([#21](https://github.com/Borrelworst/pipelinectl/issues/21)) ([66c9cbe](https://github.com/Borrelworst/pipelinectl/commit/66c9cbe5b2871f2c75674d7c0db5bb24efe3aeb8))
+
 ## [0.4.1](https://github.com/Borrelworst/pipelinectl/compare/v0.4.0...v0.4.1) (2026-04-17)
 
 
