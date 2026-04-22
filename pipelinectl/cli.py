@@ -215,7 +215,7 @@ def run(pipeline: str, branch: Optional[str], variables: tuple, parameters: tupl
                         seen_authorizations.add(auth["id"])
                         click.echo(f"\n{YELLOW}{BOLD}⏸  Permission required{RESET}  "
                                    f"{DIM}stage: {auth['stage']}{RESET}")
-                        click.echo(f"   This pipeline needs permission to access a protected resource.")
+                        click.echo("   This pipeline needs permission to access a protected resource.")
                         click.echo(f"   Grant access in Azure DevOps: {run_url}")
             elif outcome[0] == "approval_pending":
                 approvals = outcome[1]
@@ -323,7 +323,7 @@ def logs(pipeline: Optional[str], run_id: Optional[int], last: int, watch: bool)
                             seen_authorizations.add(auth["id"])
                             click.echo(f"\n{YELLOW}{BOLD}⏸  Permission required{RESET}  "
                                        f"{DIM}stage: {auth['stage']}{RESET}")
-                            click.echo(f"   This pipeline needs permission to access a protected resource.")
+                            click.echo("   This pipeline needs permission to access a protected resource.")
                             click.echo(f"   Grant access in Azure DevOps: {run_url}")
                 elif outcome[0] == "approval_pending":
                     for approval in outcome[1]:
