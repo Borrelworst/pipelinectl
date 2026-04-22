@@ -61,6 +61,16 @@ class Config:
     def auth_method(self) -> str:
         return self._data.get("azure_devops", {}).get("auth", "pat")
 
+    def update_ado(self, **kwargs) -> None:
+        """Update fields in the [azure_devops] section and save. Pass None to remove a key."""
+        ado = self._data.setdefault("azure_devops", {})
+        for key, value in kwargs.items():
+            if value is None:
+                ado.pop(key, None)
+            else:
+                ado[key] = value
+        save_config(self._data)
+
     def validate_ado(self):
         missing = []
         if not self.ado_org:

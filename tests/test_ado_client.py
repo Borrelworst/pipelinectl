@@ -5,7 +5,7 @@ from pipelinectl.ado_client import ADOClient
 
 @pytest.fixture
 def client():
-    return ADOClient("myorg", "myproject", "mytoken")
+    return ADOClient("myorg", "myproject", pat="mytoken")
 
 
 def test_find_pipeline_by_numeric_id(client):
@@ -40,6 +40,18 @@ def test_find_pipeline_ambiguous(client):
 def test_find_pipeline_not_found(client):
     with patch.object(client, "list_pipelines", return_value=[]):
         assert client.find_pipeline("nonexistent") is None
+
+
+def test_bearer_token_auth():
+    c = ADOClient("myorg", "myproject", bearer_token="mybearer")
+    assert c.headers["Authorization"] == "Bearer mybearer"
+
+
+def test_pat_auth():
+    import base64
+    c = ADOClient("myorg", "myproject", pat="mytoken")
+    expected = "Basic " + base64.b64encode(b":mytoken").decode()
+    assert c.headers["Authorization"] == expected
 
 
 def test_get_pending_approvals_filters_by_run_id(client):
@@ -78,3 +90,41 @@ def test_get_pending_approvals_filters_uninitiated(client):
     with patch.object(client, "_get", return_value={"value": approvals}):
         result = client.get_pending_approvals(100)
         assert len(result) == 0
+
+
+def test_get_pending_authorizations_returns_blocked_stages(client):
+    auth_id = "auth-1"
+    checkpoint_id = "cp-1"
+    stage_id = "stage-1"
+    timeline = {
+        "records": [
+            {"id": auth_id, "type": "Checkpoint.Authorization", "state": "inProgress",
+             "parentId": checkpoint_id, "name": "Auth"},
+            {"id": checkpoint_id, "type": "Checkpoint", "state": "inProgress",
+             "parentId": stage_id, "name": "Checkpoint"},
+            {"id": stage_id, "type": "Stage", "state": "inProgress",
+             "parentId": None, "name": "Deploy"},
+        ]
+    }
+    with patch.object(client, "get_timeline", return_value=timeline):
+        result = client.get_pending_authorizations(42)
+    assert len(result) == 1
+    assert result[0]["stage"] == "Deploy"
+    assert result[0]["id"] == auth_id
+
+
+def test_get_pending_authorizations_empty_when_none_blocked(client):
+    timeline = {
+        "records": [
+            {"id": "s1", "type": "Stage", "state": "completed", "parentId": None, "name": "Build"},
+        ]
+    }
+    with patch.object(client, "get_timeline", return_value=timeline):
+        result = client.get_pending_authorizations(42)
+    assert result == []
+
+
+def test_get_pending_authorizations_returns_empty_on_error(client):
+    with patch.object(client, "get_timeline", side_effect=Exception("network error")):
+        result = client.get_pending_authorizations(42)
+    assert result == []

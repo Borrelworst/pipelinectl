@@ -1,12 +1,14 @@
 """pipelinectl — Azure DevOps pipeline CLI wrapper."""
 
+import json
+import os
 import sys
 import subprocess
 from typing import Optional
 
 import click
 
-from .config import load_config, save_config, init_interactive, CONFIG_FILE
+from .config import load_config, init_interactive, CONFIG_FILE
 from .ado_client import ADOClient
 from .output import (
     print_run_header,
@@ -18,11 +20,11 @@ from .output import (
 
 
 def _get_azcli_token() -> str:
-    import json
     try:
         result = subprocess.run(
-            "az account get-access-token --resource 499b84ac-1321-427f-aa17-267ca6975798",
-            capture_output=True, text=True, check=True, shell=True,
+            ["az", "account", "get-access-token", "--resource",
+             "499b84ac-1321-427f-aa17-267ca6975798"],
+            capture_output=True, text=True, check=True,
         )
     except FileNotFoundError:
         click.echo(f"{RED}[error]{RESET} Azure CLI not found. Install it or switch to PAT auth.", err=True)
@@ -509,8 +511,6 @@ def config():
 @config.command("show")
 def config_show():
     """Show the current configuration."""
-    import os
-
     cfg = load_config()
 
     click.echo(f"\n{BOLD}pipelinectl configuration{RESET}  {DIM}({CONFIG_FILE}){RESET}\n")
@@ -537,35 +537,25 @@ def config_set():
     """Update configuration values."""
 
 
-@config_set.group("login")
-def config_set_login():
+@config_set.group("auth")
+def config_set_auth():
     """Configure the authentication method."""
 
 
-@config_set_login.command("pat")
+@config_set_auth.command("pat")
 @click.argument("pat_value", metavar="PAT")
-def config_set_login_pat(pat_value: str):
+def config_set_auth_pat(pat_value: str):
     """Store a Personal Access Token for authentication."""
-    import copy
     cfg = load_config()
-    data = copy.deepcopy(cfg._data)
-    ado = data.setdefault("azure_devops", {})
-    ado["pat"] = pat_value
-    ado.pop("auth", None)  # "pat" is the default; no need to store it
-    save_config(data)
+    cfg.update_ado(pat=pat_value, auth=None)  # auth=None removes the key; pat is the default
     click.echo(f"PAT saved to {CONFIG_FILE} (permissions: 600)")
 
 
-@config_set_login.command("azcli")
-def config_set_login_azcli():
+@config_set_auth.command("azcli")
+def config_set_auth_azcli():
     """Use Azure CLI for authentication (removes PAT from config)."""
-    import copy
     cfg = load_config()
-    data = copy.deepcopy(cfg._data)
-    ado = data.setdefault("azure_devops", {})
-    ado.pop("pat", None)
-    ado["auth"] = "azcli"
-    save_config(data)
+    cfg.update_ado(pat=None, auth="azcli")
     click.echo(f"Auth method set to azcli, PAT removed from {CONFIG_FILE}")
     click.echo("Run `az login` if not already signed in.")
 
