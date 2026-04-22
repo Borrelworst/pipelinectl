@@ -1,12 +1,14 @@
 """pipelinectl — Azure DevOps pipeline CLI wrapper."""
 
+import json
+import os
 import sys
 import subprocess
 from typing import Optional
 
 import click
 
-from .config import load_config, init_interactive
+from .config import load_config, init_interactive, CONFIG_FILE
 from .ado_client import ADOClient
 from .output import (
     print_run_header,
@@ -17,9 +19,28 @@ from .output import (
 )
 
 
+def _get_azcli_token() -> str:
+    try:
+        result = subprocess.run(
+            ["az", "account", "get-access-token", "--resource",
+             "499b84ac-1321-427f-aa17-267ca6975798"],
+            capture_output=True, text=True, check=True,
+        )
+    except FileNotFoundError:
+        click.echo(f"{RED}[error]{RESET} Azure CLI not found. Install it or switch to PAT auth.", err=True)
+        sys.exit(1)
+    except subprocess.CalledProcessError as e:
+        click.echo(f"{RED}[error]{RESET} Azure CLI token failed: {e.stderr.strip()}", err=True)
+        click.echo("       Run `az login` to sign in.", err=True)
+        sys.exit(1)
+    return json.loads(result.stdout)["accessToken"]
+
+
 def _make_client(cfg) -> ADOClient:
     cfg.validate_ado()
-    return ADOClient(cfg.ado_org, cfg.ado_project, cfg.ado_pat)
+    if cfg.auth_method == "azcli":
+        return ADOClient(cfg.ado_org, cfg.ado_project, bearer_token=_get_azcli_token())
+    return ADOClient(cfg.ado_org, cfg.ado_project, pat=cfg.ado_pat)
 
 
 def _run_url(org: str, project: str, pipeline_id: int, run_id: int) -> str:
@@ -181,10 +202,22 @@ def run(pipeline: str, branch: Optional[str], variables: tuple, parameters: tupl
         return
 
     final_result = None
+    log_offsets: dict = {}
+    log_in_yaml: dict = {}
+    seen_authorizations: set = set()
     try:
         while True:
-            outcome = wait_for_completion(client, build_id, stream_logs=follow_logs)
-            if outcome[0] == "approval_pending":
+            outcome = wait_for_completion(client, build_id, stream_logs=follow_logs,
+                                          log_offsets=log_offsets, log_in_yaml=log_in_yaml)
+            if outcome[0] == "authorization_pending":
+                for auth in outcome[1]:
+                    if auth["id"] not in seen_authorizations:
+                        seen_authorizations.add(auth["id"])
+                        click.echo(f"\n{YELLOW}{BOLD}⏸  Permission required{RESET}  "
+                                   f"{DIM}stage: {auth['stage']}{RESET}")
+                        click.echo("   This pipeline needs permission to access a protected resource.")
+                        click.echo(f"   Grant access in Azure DevOps: {run_url}")
+            elif outcome[0] == "approval_pending":
                 approvals = outcome[1]
                 for approval in approvals:
                     click.echo(f"\n{YELLOW}{BOLD}⏸  Approval required{RESET}  {DIM}(id: {approval['id']}){RESET}")
@@ -220,31 +253,44 @@ def run(pipeline: str, branch: Optional[str], variables: tuple, parameters: tupl
 # ---------------------------------------------------------------------------
 
 @cli.command()
-@click.argument("pipeline", metavar="PIPELINE")
-@click.argument("run_id", metavar="RUN_ID", type=int, required=False)
+@click.argument("pipeline", metavar="PIPELINE", required=False)
+@click.option("--run-id", "-r", "run_id", type=int, default=None,
+              help="Specific run/build ID to fetch logs from.")
 @click.option("--last", "-n", default=1, show_default=True,
-              help="Which run to fetch if RUN_ID is not given (1 = most recent).")
-def logs(pipeline: str, run_id: Optional[int], last: int):
+              help="Which run to fetch if --run-id is not given (1 = most recent).")
+@click.option("--watch", "-w", is_flag=True, default=False,
+              help="Stream live logs and exit when the run completes.")
+def logs(pipeline: Optional[str], run_id: Optional[int], last: int, watch: bool):
     """Print logs from a previous run.
 
     \b
     Examples:
-      pipelinectl logs build-and-test           # logs from most recent run
-      pipelinectl logs build-and-test 12345     # logs from specific run ID
-      pipelinectl logs build-and-test --last 2  # logs from 2nd most recent run
+      pipelinectl logs build-and-test                 # logs from most recent run
+      pipelinectl logs build-and-test --run-id 12345  # logs from specific run
+      pipelinectl logs 11                             # pipeline by ID, most recent
+      pipelinectl logs 11 --run-id 12345              # pipeline by ID, specific run
+      pipelinectl logs --run-id 12345                 # logs by build ID only
+      pipelinectl logs build-and-test --last 2        # logs from 2nd most recent run
+      pipelinectl logs build-and-test --watch         # tail live logs until completion
     """
     cfg = load_config()
     client = _make_client(cfg)
 
-    try:
-        pipe = client.find_pipeline(pipeline)
-    except ValueError as e:
-        click.echo(f"{RED}[error]{RESET} {e}", err=True)
+    if pipeline is None and run_id is None:
+        click.echo(f"{RED}[error]{RESET} Provide a PIPELINE name/ID or --run-id.", err=True)
         sys.exit(1)
 
-    if pipe is None:
-        click.echo(f"{RED}[error]{RESET} Pipeline '{pipeline}' not found.", err=True)
-        sys.exit(1)
+    pipe = None
+    if pipeline is not None:
+        try:
+            pipe = client.find_pipeline(pipeline)
+        except ValueError as e:
+            click.echo(f"{RED}[error]{RESET} {e}", err=True)
+            sys.exit(1)
+
+        if pipe is None:
+            click.echo(f"{RED}[error]{RESET} Pipeline '{pipeline}' not found.", err=True)
+            sys.exit(1)
 
     if run_id is None:
         runs = client.list_runs(pipe["id"], top=last + 1)
@@ -257,8 +303,50 @@ def logs(pipeline: str, run_id: Optional[int], last: int):
     else:
         build_id = run_id
 
-    run_url = _run_url(cfg.ado_org, cfg.ado_project, pipe["id"], build_id)
-    print_run_header(pipe["name"], "(historical)", run_id, run_url)
+    pipeline_name = pipe["name"] if pipe else f"build {build_id}"
+    run_url = _run_url(cfg.ado_org, cfg.ado_project, pipe["id"] if pipe else 0, build_id)
+    print_run_header(pipeline_name, "(historical)", run_id, run_url)
+
+    if watch:
+        final_result = None
+        log_offsets: dict = {}
+        log_in_yaml: dict = {}
+        seen_authorizations: set = set()
+        seen_approvals: set = set()
+        try:
+            while True:
+                outcome = wait_for_completion(client, build_id, stream_logs=True,
+                                              log_offsets=log_offsets, log_in_yaml=log_in_yaml)
+                if outcome[0] == "authorization_pending":
+                    for auth in outcome[1]:
+                        if auth["id"] not in seen_authorizations:
+                            seen_authorizations.add(auth["id"])
+                            click.echo(f"\n{YELLOW}{BOLD}⏸  Permission required{RESET}  "
+                                       f"{DIM}stage: {auth['stage']}{RESET}")
+                            click.echo("   This pipeline needs permission to access a protected resource.")
+                            click.echo(f"   Grant access in Azure DevOps: {run_url}")
+                elif outcome[0] == "approval_pending":
+                    for approval in outcome[1]:
+                        if approval["id"] not in seen_approvals:
+                            seen_approvals.add(approval["id"])
+                            click.echo(f"\n{YELLOW}{BOLD}⏸  Approval required{RESET}  "
+                                       f"{DIM}(id: {approval['id']}){RESET}")
+                            if approval.get("instructions"):
+                                click.echo(f"   {approval['instructions']}")
+                            click.echo(f"   Approve in Azure DevOps: {run_url}")
+                else:
+                    _, final_result, _ = outcome
+                    break
+        except KeyboardInterrupt:
+            click.echo(f"\n{YELLOW}Interrupted — run may still be in progress.{RESET}")
+            click.echo(f"  {run_url}")
+            sys.exit(130)
+        except Exception as e:
+            click.echo(f"\n{RED}[error]{RESET} {e}", err=True)
+            sys.exit(1)
+        print_final_result(final_result, run_url)
+        sys.exit(0 if final_result == "succeeded" else 1)
+
     print_section("Logs")
 
     try:
@@ -409,6 +497,67 @@ def status(pipeline: str, top: int):
 
         click.echo(f"{run_id:>8}  {state:12}  {col}{result:12}{RESET}  {branch}")
     click.echo()
+
+
+# ---------------------------------------------------------------------------
+# config
+# ---------------------------------------------------------------------------
+
+@cli.group()
+def config():
+    """Manage pipelinectl configuration."""
+
+
+@config.command("show")
+def config_show():
+    """Show the current configuration."""
+    cfg = load_config()
+
+    click.echo(f"\n{BOLD}pipelinectl configuration{RESET}  {DIM}({CONFIG_FILE}){RESET}\n")
+    click.echo(f"  {'organization':20}  {cfg.ado_org or f'{DIM}(not set){RESET}'}")
+    click.echo(f"  {'project':20}  {cfg.ado_project or f'{DIM}(not set){RESET}'}")
+    click.echo(f"  {'default_branch':20}  {cfg.ado_default_branch}")
+
+    auth = cfg.auth_method
+    if auth == "azcli":
+        click.echo(f"  {'auth':20}  azcli")
+    else:
+        pat_raw = cfg.ado_pat
+        pat_source = "env (ADO_PAT)" if os.environ.get("ADO_PAT") else str(CONFIG_FILE)
+        if pat_raw:
+            pat_display = f"{'*' * (len(pat_raw) - 4)}{pat_raw[-4:]}" if len(pat_raw) > 4 else "****"
+        else:
+            pat_display = f"{DIM}(not set){RESET}"
+        click.echo(f"  {'auth':20}  pat  {DIM}({pat_display} [{pat_source}]){RESET}")
+    click.echo()
+
+
+@config.group("set")
+def config_set():
+    """Update configuration values."""
+
+
+@config_set.group("auth")
+def config_set_auth():
+    """Configure the authentication method."""
+
+
+@config_set_auth.command("pat")
+@click.argument("pat_value", metavar="PAT")
+def config_set_auth_pat(pat_value: str):
+    """Store a Personal Access Token for authentication."""
+    cfg = load_config()
+    cfg.update_ado(pat=pat_value, auth=None)  # auth=None removes the key; pat is the default
+    click.echo(f"PAT saved to {CONFIG_FILE} (permissions: 600)")
+
+
+@config_set_auth.command("azcli")
+def config_set_auth_azcli():
+    """Use Azure CLI for authentication (removes PAT from config)."""
+    cfg = load_config()
+    cfg.update_ado(pat=None, auth="azcli")
+    click.echo(f"Auth method set to azcli, PAT removed from {CONFIG_FILE}")
+    click.echo("Run `az login` if not already signed in.")
 
 
 # ---------------------------------------------------------------------------

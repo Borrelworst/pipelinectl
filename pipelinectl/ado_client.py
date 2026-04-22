@@ -9,13 +9,17 @@ import requests
 class ADOClient:
     """Thin wrapper around the Azure DevOps REST API."""
 
-    def __init__(self, org: str, project: str, pat: str):
+    def __init__(self, org: str, project: str, *, pat: str = "", bearer_token: str = ""):
         self.org = org
         self.project = project
         self.base = f"https://dev.azure.com/{org}/{project}/_apis"
-        token = base64.b64encode(f":{pat}".encode()).decode()
+        if bearer_token:
+            auth_header = f"Bearer {bearer_token}"
+        else:
+            token = base64.b64encode(f":{pat}".encode()).decode()
+            auth_header = f"Basic {token}"
         self.headers = {
-            "Authorization": f"Basic {token}",
+            "Authorization": auth_header,
             "Content-Type": "application/json",
         }
 
@@ -86,6 +90,27 @@ class ADOClient:
     # ------------------------------------------------------------------
     # Build logs  (build API, which backs pipeline runs)
     # ------------------------------------------------------------------
+
+    def get_pending_authorizations(self, build_id: int) -> list[dict]:
+        """Return stages blocked on resource authorization (Checkpoint.Authorization inProgress)."""
+        try:
+            tl = self.get_timeline(build_id)
+        except Exception:
+            return []
+        records = {r["id"]: r for r in tl.get("records", [])}
+        auth_records = [
+            r for r in records.values()
+            if r.get("type") == "Checkpoint.Authorization" and r.get("state") == "inProgress"
+        ]
+        result = []
+        for auth in auth_records:
+            checkpoint = records.get(auth.get("parentId", ""), {})
+            stage = records.get(checkpoint.get("parentId", ""), {})
+            result.append({
+                "stage": stage.get("name", "unknown") if stage.get("type") == "Stage" else "unknown",
+                "id": auth["id"],
+            })
+        return result
 
     def get_pending_approvals(self, run_id: int) -> list[dict]:
         url = (

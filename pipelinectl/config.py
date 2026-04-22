@@ -57,13 +57,27 @@ class Config:
     def ado_default_branch(self) -> str:
         return self._data.get("azure_devops", {}).get("default_branch", "main")
 
+    @property
+    def auth_method(self) -> str:
+        return self._data.get("azure_devops", {}).get("auth", "pat")
+
+    def update_ado(self, **kwargs) -> None:
+        """Update fields in the [azure_devops] section and save. Pass None to remove a key."""
+        ado = self._data.setdefault("azure_devops", {})
+        for key, value in kwargs.items():
+            if value is None:
+                ado.pop(key, None)
+            else:
+                ado[key] = value
+        save_config(self._data)
+
     def validate_ado(self):
         missing = []
         if not self.ado_org:
             missing.append("organization")
         if not self.ado_project:
             missing.append("project")
-        if not self.ado_pat:
+        if self.auth_method == "pat" and not self.ado_pat:
             missing.append("pat (or set ADO_PAT env var)")
         if missing:
             print(
@@ -124,17 +138,27 @@ def init_interactive():
 
     org = ask("Azure DevOps organization", ado.get("organization", ""))
     project = ask("Azure DevOps project", ado.get("project", ""))
-    pat = ask("Personal Access Token (PAT)", ado.get("pat", ""))
-    branch = ask("Default branch", ado.get("default_branch", "main"))
 
-    data = {
-        "azure_devops": {
-            "organization": org,
-            "project": project,
-            "pat": pat,
-            "default_branch": branch,
-        }
+    current_auth = ado.get("auth", "pat")
+    auth_method = ask("Authentication method (pat/azcli)", current_auth)
+    while auth_method not in ("pat", "azcli"):
+        print("  Please enter 'pat' or 'azcli'.")
+        auth_method = ask("Authentication method (pat/azcli)", current_auth)
+
+    ado_section: dict = {
+        "organization": org,
+        "project": project,
+        "default_branch": ask("Default branch", ado.get("default_branch", "main")),
     }
-    save_config(data)
+
+    if auth_method == "azcli":
+        ado_section["auth"] = "azcli"
+        print("  Using Azure CLI auth — run `az login` if not already signed in.")
+    else:
+        pat = ask("Personal Access Token (PAT)", ado.get("pat", ""))
+        ado_section["pat"] = pat
+
+    save_config({"azure_devops": ado_section})
     print(f"\n✓ Config saved to {CONFIG_FILE} (permissions: 600)")
-    print("  Tip: you can also set ADO_PAT as an env var to avoid storing the token on disk.")
+    if auth_method == "pat":
+        print("  Tip: you can also set ADO_PAT as an env var to avoid storing the token on disk.")
