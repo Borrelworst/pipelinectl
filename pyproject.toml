@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pipelinectl"
-version = "0.4.1"
+version = "0.5.0"
 description = "CLI wrapper to trigger and tail Azure DevOps pipelines"
 readme = "README.md"
 requires-python = ">=3.10"
